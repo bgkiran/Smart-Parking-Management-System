@@ -1,0 +1,63 @@
+% Creating variable ‘a’ for calling libraries of Arduino
+a = arduino('COM3', 'Uno','Libraries',{'ExampleLCD/LCDAddon','servo'});
+Servo_gate = servo(a,'D9','MinPulseDuration',7.00e-4,'MaxPulseDuration',2.3e-3);
+Lcd=addon(a,'ExampleLCD/LCDAddon','RegisterSelectPin','D12','EnablePin','D11','DataPins',{'D5','D4','D3','D2'});
+% LCD is assigned with required library and ready to take input
+initializeLCD(lcd);
+% Total available parking space
+count=0;
+AvailableParkingspace=13;
+% Set initial barrier gate to closed position
+writePosition(Servo_gate, 0);
+% LED Lights are shown to represent the initial state of the parking space
+writeDigitalPin(a,'D7',0); % Initially LED does not emits GREEN (for signal state= '0')
+writeDigitalPin(a,'D6',1); % Initially LED emits RED light (for signal state='1')
+while 1
+% Display parking availability for initial condition
+vehicle_entrybutton = readDigitalPin(a,'D13'); % (This button stores data in pin D13)
+if count < 13 && vehicle_entrybutton == 0
+writeDigitalPin(a,'D7',0); %LED GREEN turns off
+writeDigitalPin(a,'D6',1); % LED RED turns on
+% display current available slots
+printLCD(lcd,'Welcome! Parking');
+printLCD(lcd,['Availability: ',num2str(AvailableParkingspace)]);
+9
+% Case1: Car enters the parking space
+elseif count < 13 && vehicle_entrybutton == 1 % (EntryButton is pressed & slots are availble)
+writeDigitalPin(a,'D7',1); %LED GREEN turns on
+writeDigitalPin(a,'D6',0); % LED RED turns off
+writePosition(Servo_gate, 1); % Servomotor rotates to 180deg to open the parking gate
+clearLCD(lcd); % clear LCD display
+count = count+1;
+AvailableParkingspace= AvailableParkingspace-1; % number of spots reduces by 1
+pause(1); % Entry Parking gate holds the open position for 1sec
+writePosition(Servo_gate, 0); % Servomotor rotates back to closed position '0'
+writeDigitalPin(a,'D7',0); % LED GREEN turns off
+writeDigitalPin(a,'D6',1); % LED RED turns on
+printLCD(lcd,'Welcome! Parking'); % display current available slots
+printLCD(lcd,['Availability: ',num2str(AvailableParkingspace)]);
+% Case2: No available parking slots
+elseif count >=13
+writeDigitalPin(a,'D7',0); % LED GREEN turns off
+writeDigitalPin(a,'D6',1); % LED RED turns on
+printLCD(lcd,'Plz come later ');
+printLCD(lcd,'No Free Slots');
+end
+% Case3: Car exits the parking space
+vehicle_exitbutton = readDigitalPin(a,'D8'); % ( vehicle_entrybutton stores data to input pin D8)
+if count > 0 && vehicle_exitbutton == 1 % (driver press ExitButton & Exits parking area)
+writeDigitalPin(a,'D7',1); % LED GREEN turns on
+writeDigitalPin(a,'D6',0); % LED RED turns off
+writePosition(Servo_gate, 1); % Servomotor rotates 180deg to open the exitgate
+clearLCD(lcd); % clear LCD display
+count = count-1;
+AvailableParkingspace= AvailableParkingspace+1;
+pause(1); % Exit parking gate holds the open position for 1sec
+%Servomotor rotate exit gate to closed position
+writePosition(Servo_gate, 0);
+writeDigitalPin(a,'D7',0); % LED GREEN turns off
+writeDigitalPin(a,'D6',1); % LED RED turns on
+printLCD(lcd,'Welcome! Parking'); % display current available slots
+printLCD(lcd,['Availability: ',num2str(AvailableParkingspace)]);
+end
+end
